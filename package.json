@@ -1,0 +1,24 @@
+{
+  "name": "nodehttpwrapper",
+  "version": "1.0.0",
+  "description": "Simple Http(s) request wrapper for the native node http(s) request",
+  "main": "NodeHttpRequestWrapper.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/inextor/NodeHttpWrapper.git"
+  },
+  "keywords": [
+    "https",
+    "http",
+    "request"
+  ],
+  "author": "Nestor Leon",
+  "license": "UNLICENSED",
+  "bugs": {
+    "url": "https://github.com/inextor/NodeHttpWrapper/issues"
+  },
+  "homepage": "https://github.com/inextor/NodeHttpWrapper#readme"
+}
