@@ -102,15 +102,19 @@ function httpRequest(obj)
 
 		res.on('end', () =>
 		{
-			if( obj.debug ) console.log('No more data in response.')
+			if( obj.debug ) console.log('No more data in response.');
+
 			if( obj.success )
 			{
-				obj.success( data );
+				if( obj.dataType != 'json' )
+					obj.success( data );
+				else
+					obj.success( JSON.parse( data ) );
 			}
 
 			if( obj.end )
 				obj.end();
-		})
+		});
 	});
 
 	req.on('error', (e) =>
