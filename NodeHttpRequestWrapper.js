@@ -119,7 +119,16 @@ function httpRequest(obj)
 	});
 
 	if( obj.timeout )
-		req.setTimeout( obj.timeout );
+	{
+		req.on('socket', function (socket)
+		{
+			socket.setTimeout( obj.timeout );
+			socket.on('timeout', function()
+			{
+				req.abort();
+			});
+		});
+	}
 
 	req.on('error', (e) =>
 	{
