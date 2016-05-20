@@ -69,6 +69,7 @@ function httpRequest(obj)
 		,method			: method
 		,headers		: headers
 		,protocol		: urlObj.protocol
+		,agent			: obj.agent
 	};
 
 
