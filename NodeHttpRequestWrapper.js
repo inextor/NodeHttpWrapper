@@ -70,6 +70,7 @@ function httpRequest(obj)
 		,headers		: headers
 		,protocol		: urlObj.protocol
 		,agent			: obj.agent
+		,timeout		: obj.timeout
 	};
 
 
