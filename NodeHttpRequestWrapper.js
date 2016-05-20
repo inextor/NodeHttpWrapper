@@ -70,7 +70,6 @@ function httpRequest(obj)
 		,headers		: headers
 		,protocol		: urlObj.protocol
 		,agent			: obj.agent
-		,timeout		: obj.timeout
 	};
 
 
@@ -118,6 +117,9 @@ function httpRequest(obj)
 				obj.end();
 		});
 	});
+
+	if( obj.timeout )
+		req.setTimeout( obj.timeout );
 
 	req.on('error', (e) =>
 	{
