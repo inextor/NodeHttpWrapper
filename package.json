@@ -1,6 +1,6 @@
 {
   "name": "nodehttpwrapper",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "Simple Http(s) request wrapper for the native node http(s) request",
   "main": "NodeHttpRequestWrapper.js",
   "scripts": {
