@@ -4,11 +4,14 @@
 
 	httpRequestWrapper
 	({
-		url		: 'https://google.com'
-		,debug	: false
-		,post	: {'Hello' : 'World' } // OR null
-		,headers	: {'Accept-Language'	: 'en-US'}
-		,success	: function( data ) //set if you spect string data
+		url				: 'https://google.com'
+		,debug			: false
+		,post			: {'Hello' : 'World' } // OR null
+		,headers		: {'Accept-Language'	: 'en-US'}
+		,proxy			: 'http://myproxy.com'
+		,proxyPort		: 8080
+		,maxRedirects	: 10
+		,success		: function( data ) //set if you spect string data
 		{
 
 		}
@@ -26,8 +29,16 @@
 		}
 	});
 */
+
+var Iconv		= require('iconv').Iconv;
+
 function httpRequest(obj)
 {
+	var colors			= null;
+
+	if( obj.debug )
+		colors        = require('colors/safe');
+
 	const url			= require('url');
 	const querystring	= require('querystring');
 
@@ -37,6 +48,7 @@ function httpRequest(obj)
 	var method			= 'GET';
 	var postData		= '';
 	var headers	 		= {};
+	var charset			= 'utf-8';
 
 	for(var i in obj.headers )
 	{
@@ -45,10 +57,19 @@ function httpRequest(obj)
 
 	if( obj.post )
 	{
-		method			= 'POST';
-	   	postData		= querystring.stringify( obj.post );
+		method						= 'POST';
+	   	postData					= querystring.stringify( obj.post );
 		headers['Content-Type']		= 'application/x-www-form-urlencoded';
 		headers['Content-Length']	= postData.length;
+	}
+
+
+	if( obj.debug )
+	{
+		for(var j in headers )
+		{
+			console.log(colors.magenta( j +' :'),colors.cyan( headers[ j ] ) );
+		}
 	}
 
 	var port		=  urlObj.port;
@@ -59,7 +80,29 @@ function httpRequest(obj)
 	}
 
 	if( obj.debug )
-		console.log('Port: '+port );
+		console.log(colors.magenta( 'Port: '),colors.cyan( port) );
+
+	var agent	= null;
+
+	if( obj.proxy )
+	{
+
+		var HttpProxyAgent = null;
+		var HttpsProxyAgent = null;
+
+		if( urlObj.protocol == 'http:' )
+			HttpProxyAgent = require('https-proxy-agent');
+		else
+			HttpsProxyAgent = require('http-proxy-agent');
+
+		var proxyPort	= obj.proxyPort || 80;
+
+		if( urlObj.protocol === 'http:' )
+			agent =  new HttpProxyAgent( 'http://'+obj.proxy+':'+proxyPort );
+		else
+			agent = new HttpsProxyAgent( 'https://'+obj.proxy+':'+proxyPort );
+
+	}
 
 	var options		=
 	{
@@ -72,41 +115,110 @@ function httpRequest(obj)
 		,agent			: obj.agent
 	};
 
-
 	if( obj.debug )
-		console.log( options );
+		console.log
+		(
+			colors.magenta(  method )
+			,' ',colors.red( urlObj.protocol )+colors.green( urlObj.hostname )+colors.blue( urlObj.path)
+		);
+
+
 
 	var req = http.request(options, (res) =>
 	{
-		if( obj.debug ) console.log(`STATUS: ${res.statusCode}`);
-		if( obj.debug ) console.log(`HEADERS: ${JSON.stringify(res.headers)}`);
+		if( obj.debug ) console.log( colors.blue('STATUS: '), colors.green( res.statusCode) );
 
-		var data =	'';
+		for(var i in res.headers)
+		{
+			if( obj.debug )
+				console.log( colors.cyan.bold(i+' :'), colors.green(res.headers[i]));
 
-		if( obj.success )
-			res.setEncoding('utf8');
+			if( i == 'content-type' )
+			{
+				if(  res.headers[i].match( /charset=/ ) )
+				{
+					charset	= res.headers[ i ].replace(/.*charset=/,'');
+					if( obj.debug ) console.log( colors.red('SET charset'),colors.green.bold( charset) );
+				}
+				else
+				{
+					if( obj.debug ) console.log( colors.red('SET utf-8 AS default CHARSET') );
+				}
+
+			}
+		}
+
+
+		if( res.statusCode  >= 300 && res.statusCode < 400 )
+		{
+			req.abort();
+			if( obj.debug )
+			{
+				console.log( colors.red.bold('Redirecting to: '), colors.green.bold( res.headers.location ) );
+			}
+			var newRequestObject 		= {};
+
+			for(var j in obj)
+			{
+				newRequestObject[ j ]	= obj[j];
+				obj[j]					= null;
+			}
+
+			newRequestObject.url	= res.headers.location;
+			httpRequest( newRequestObject );
+			return;
+		}
+
+
+		var data		=	'';
+		var chunks		= [];
+		var totallength	= 0;
 
 		res.on('data', (chunk) =>
 		{
-			if( obj.debug ) console.log(`BODY: ${chunk}`);
+			if( obj.debug ) console.log(colors.yellow('CHUNK Arrived'),colors.magenta( chunk.length ));
+
+			 totallength += chunk.length;
 
 			if( obj.onData )
 			{
 				obj.onData( chunk );
 			}
-
-			if( obj.success )
+			else
 			{
-				data += chunk;
+				chunks.push( chunk );
 			}
 		});
 
 		res.on('end', () =>
 		{
-			if( obj.debug ) console.log('No more data in response.');
+			if( obj.debug ) console.log( colors.cyan.bold( 'Read Bytes'),colors.green.bold( totallength ));
+			if( obj.debug ) console.log( colors.red( 'No more data in response.'));
 
 			if( obj.success )
 			{
+				var results = new Buffer(totallength);
+				var pos		= 0;
+
+				for (var i = 0; i < chunks.length; i++)
+				{
+					chunks[ i ].copy( results, pos );
+					pos += chunks[ i ].length;
+				}
+
+				var data	= null;
+
+				if( charset.toLowerCase() == 'utf-8' || charset.toLowerCase() == 'utf8' )
+				{
+					data  = results.toString('utf8');
+				}
+				else
+				{
+					var iconv		= new Iconv( charset , 'UTF8');
+					var converted	= iconv.convert(results);
+					data		= converted.toString('utf8');
+				}
+
 				if( obj.dataType != 'json' )
 					obj.success( data );
 				else
@@ -132,11 +244,11 @@ function httpRequest(obj)
 
 	req.on('error', (e) =>
 	{
-	 	if( obj.debug ) console.log(`problem with request: ${e.message}`);
-		obj.error(e);
+	 	if( obj.debug ) console.log(colors.blue('problem with request:'),colors.red( e.message ));
+		if( obj.error ) obj.error(e);
 	});
 
-	if( obj.debug ) console.log('POST_DATA is', postData );
+	if( obj.debug ) console.log(colors.blue('post dat length is:'), colors.red( postData.length ) );
 
 	// write data to request body
 	if( method == 'POST' )
@@ -148,4 +260,3 @@ function httpRequest(obj)
 }
 
 module.exports = httpRequest;
-
