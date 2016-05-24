@@ -1,6 +1,6 @@
 {
   "name": "nodehttpwrapper",
-  "version": "1.0.2",
+  "version": "1.0.6",
   "description": "Simple Http(s) request wrapper for the native node http(s) request",
   "main": "NodeHttpRequestWrapper.js",
   "scripts": {
@@ -13,12 +13,20 @@
   "keywords": [
     "https",
     "http",
-    "request"
+    "request",
+    "ajax",
+	"cookies",
+	"redirect"
   ],
   "author": "Nestor Leon",
   "license": "UNLICENSED",
   "bugs": {
     "url": "https://github.com/inextor/NodeHttpWrapper/issues"
   },
-  "homepage": "https://github.com/inextor/NodeHttpWrapper#readme"
+  "homepage": "https://github.com/inextor/NodeHttpWrapper#readme",
+  "dependencies": {
+    "colors": "^1.1.2",
+    "iconv": "^2.2.0",
+    "tough-cookie": "^2.2.2"
+  }
 }
