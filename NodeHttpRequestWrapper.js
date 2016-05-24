@@ -1,5 +1,4 @@
 /*
-*
 	var httpRequestWrapper = require('nodeHttpRequestWrapper');
 
 	httpRequestWrapper
@@ -54,21 +53,31 @@ function httpRequest( obj )
 	var headers	 		= {};
 	var charset			= 'utf-8';
 
+	if( obj.debug )
+	{
+		console.log
+		(
+			colors.green('Connecting to')
+			,colors.white.bold( obj.url )
+		);
+	}
+
 	for(var i in obj.headers )
 	{
 		headers[ i ]	= obj.headers[ i ];
 
 		if( i.toLowerCase() == 'cookie' )
 		{
-			console.log(colors.yellow.bold('Cookies'),colors.green.bold( obj.headers[ i ] ) );
+			//console.log(colors.yellow.bold('Cookies'),colors.green.bold( obj.headers[ i ] ) );
 			cookiejar.setCookieSync( obj.headers[ i ], obj.url,{loose: true});
 		}
 	}
+
 	var cookieString	= cookiejar.getCookieStringSync( obj.url,{} );
 
 	if( cookieString )
 	{
-		console.log(colors.yellow.bold('Setting The Cookie'),colors.green.bold( cookieString ) );
+		//console.log(colors.yellow.bold('Setting The Cookie'),colors.green.bold( cookieString ) );
 		headers.Cookie	= cookieString;
 	}
 
@@ -96,18 +105,18 @@ function httpRequest( obj )
 	}
 
 	if( obj.debug )
-		console.log(colors.magenta( 'Port: '),colors.cyan( port) );
+		console.log(colors.blue( 'Port: '),colors.green( port) );
 
 	var agent	= null;
 
 	if( obj.proxy )
 	{
 
-		var HttpProxyAgent = null;
-		var HttpsProxyAgent = null;
+		var HttpProxyAgent		= null;
+		var HttpsProxyAgent		= null;
 
 		if( urlObj.protocol == 'http:' )
-			HttpProxyAgent = require('https-proxy-agent');
+			HttpProxyAgent	= require('https-proxy-agent');
 		else
 			HttpsProxyAgent = require('http-proxy-agent');
 
@@ -132,11 +141,13 @@ function httpRequest( obj )
 	};
 
 	if( obj.debug )
+	{
 		console.log
 		(
-			colors.magenta(  method )
-			,' ',colors.red( urlObj.protocol )+colors.green( urlObj.hostname )+colors.blue( urlObj.path)
+			colors.blue(  method )
+			,' ',colors.red.bold( urlObj.protocol )+colors.green( urlObj.hostname )+colors.blue( urlObj.path)
 		);
+	}
 
 
 	var req = http.request(options, (res) =>
@@ -144,10 +155,20 @@ function httpRequest( obj )
 		if( obj.debug ) console.log( colors.blue('STATUS: '), colors.green( res.statusCode) );
 
 		//for(var i=0;i<res.headers.length;i++)
+
+		if( obj.debug )
+			console.log(colors.magenta.bold('Response Headers'));
+
 		for(var i in res.headers )
 		{
 			if( obj.debug )
-				console.log( colors.cyan.bold(i+' :'), colors.green(res.headers[i]));
+			{
+				console.log
+				(
+					colors.cyan.bold(i+' :')
+					,colors.green(res.headers[i])
+				);
+			}
 
 			if( i == 'content-type' )
 			{
@@ -165,8 +186,6 @@ function httpRequest( obj )
 			else if( i=='set-cookie')
 			{
 
-				console.log(colors.green('Setting Cookie'),colors.yellow.bold( res.headers[i] ));
-
 				if (res.headers['set-cookie'] instanceof Array)
 					  cookies = res.headers['set-cookie'].map(Cookie.parse);
 				else
@@ -174,7 +193,6 @@ function httpRequest( obj )
 
 				for(var j=0;j<cookies.length;j++)
 				{
-					console.log(colors.green('Cookie'),cookies[j] );
 					cookiejar.setCookieSync( cookies[j], obj.url ,{loose: true} );
 				}
 			}
@@ -182,21 +200,48 @@ function httpRequest( obj )
 
 		if( res.statusCode  >= 300 && res.statusCode < 400 )
 		{
+			if( !obj.maxRedirects )
+			{
+				//if( obj.debug ) console.log(colors.red( 'Max Redirects Reached' ));
+
+				if( obj.error )
+					obj.error('Max Redirects Reached');
+				return;
+			}
+
 			req.abort();
+
 			if( obj.debug )
 			{
-				console.log( colors.red.bold('Redirecting to: '), colors.green.bold( res.headers.location ) );
+				console.log
+				(
+					colors.red.bold('Redirecting to: ')
+					,colors.green.bold( res.headers.location )
+				);
 			}
-			var newRequestObject 		= {};
 
-			for(var j in obj)
+			var newRequestObject 			= {};
+
+			for(var k in obj)
 			{
-				newRequestObject[ j ]	= obj[j];
-				obj[j]					= null;
+				newRequestObject[ k ]		= obj[k];
+				obj[k]						= null;
 			}
 
-			newRequestObject.url		= res.headers.location;
-			newRequestObject.cookiejar	= cookiejar;
+			newRequestObject.maxRedirects	= obj.maxRedirects - 1;
+			newRequestObject.url			= res.headers.location;
+			newRequestObject.cookiejar		= cookiejar;
+			newRequestObject.referer		= obj.url;
+
+			for(var l in obj.headers )
+			{
+				var ll = l.toLowerCase();
+				if( ll.indexOf('accept-') === 0 || ll === 'user-agent' || ll === 'dnt' || ll === 'cache-control')
+				{
+					newRequestObject.headers[ l ] =  obj.headers;
+				}
+			}
+
 			httpRequest( newRequestObject );
 			return;
 		}
@@ -208,7 +253,7 @@ function httpRequest( obj )
 
 		res.on('data', (chunk) =>
 		{
-			if( obj.debug ) console.log(colors.yellow('CHUNK Arrived'),colors.magenta( chunk.length ));
+			if( obj.debug ) console.log(colors.yellow('CHUNK Arrived'),colors.magenta.bold( chunk.length ));
 
 			 totallength += chunk.length;
 
