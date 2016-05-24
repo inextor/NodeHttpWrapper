@@ -11,7 +11,7 @@
 		,proxy			: 'http://myproxy.com'
 		,proxyPort		: 8080
 		,maxRedirects	: 10
-		,success		: function( data ) //set if you spect string data
+		,success		: function( data,headers,cookiejar ) //set if you spect string data
 		{
 
 		}
@@ -30,14 +30,18 @@
 	});
 */
 
-var Iconv		= require('iconv').Iconv;
+var Iconv			= require('iconv').Iconv;
+var tough			= require('tough-cookie');
+var Cookie			= tough.Cookie;
 
-function httpRequest(obj)
+function httpRequest( obj )
 {
+	var cookiejar		= obj.cookiejar || new tough.CookieJar();
+
 	var colors			= null;
 
 	if( obj.debug )
-		colors        = require('colors/safe');
+		colors			= require('colors/safe');
 
 	const url			= require('url');
 	const querystring	= require('querystring');
@@ -52,7 +56,20 @@ function httpRequest(obj)
 
 	for(var i in obj.headers )
 	{
-		headers[ i ] = obj.headers[ i ];
+		headers[ i ]	= obj.headers[ i ];
+
+		if( i.toLowerCase() == 'cookie' )
+		{
+			console.log(colors.yellow.bold('Cookies'),colors.green.bold( obj.headers[ i ] ) );
+			cookiejar.setCookieSync( obj.headers[ i ], obj.url,{loose: true});
+		}
+	}
+	var cookieString	= cookiejar.getCookieStringSync( obj.url,{} );
+
+	if( cookieString )
+	{
+		console.log(colors.yellow.bold('Setting The Cookie'),colors.green.bold( cookieString ) );
+		headers.Cookie	= cookieString;
 	}
 
 	if( obj.post )
@@ -63,12 +80,11 @@ function httpRequest(obj)
 		headers['Content-Length']	= postData.length;
 	}
 
-
 	if( obj.debug )
 	{
 		for(var j in headers )
 		{
-			console.log(colors.magenta( j +' :'),colors.cyan( headers[ j ] ) );
+			console.log( colors.magenta( j +' :') ,colors.cyan( headers[ j ] ) );
 		}
 	}
 
@@ -123,12 +139,12 @@ function httpRequest(obj)
 		);
 
 
-
 	var req = http.request(options, (res) =>
 	{
 		if( obj.debug ) console.log( colors.blue('STATUS: '), colors.green( res.statusCode) );
 
-		for(var i in res.headers)
+		//for(var i=0;i<res.headers.length;i++)
+		for(var i in res.headers )
 		{
 			if( obj.debug )
 				console.log( colors.cyan.bold(i+' :'), colors.green(res.headers[i]));
@@ -146,8 +162,23 @@ function httpRequest(obj)
 				}
 
 			}
-		}
+			else if( i=='set-cookie')
+			{
 
+				console.log(colors.green('Setting Cookie'),colors.yellow.bold( res.headers[i] ));
+
+				if (res.headers['set-cookie'] instanceof Array)
+					  cookies = res.headers['set-cookie'].map(Cookie.parse);
+				else
+					  cookies = [Cookie.parse(res.headers['set-cookie'])];
+
+				for(var j=0;j<cookies.length;j++)
+				{
+					console.log(colors.green('Cookie'),cookies[j] );
+					cookiejar.setCookieSync( cookies[j], obj.url ,{loose: true} );
+				}
+			}
+		}
 
 		if( res.statusCode  >= 300 && res.statusCode < 400 )
 		{
@@ -164,7 +195,8 @@ function httpRequest(obj)
 				obj[j]					= null;
 			}
 
-			newRequestObject.url	= res.headers.location;
+			newRequestObject.url		= res.headers.location;
+			newRequestObject.cookiejar	= cookiejar;
 			httpRequest( newRequestObject );
 			return;
 		}
@@ -220,9 +252,9 @@ function httpRequest(obj)
 				}
 
 				if( obj.dataType != 'json' )
-					obj.success( data );
+					obj.success( data, headers, cookiejar );
 				else
-					obj.success( JSON.parse( data ) );
+					obj.success( JSON.parse( data ), headers, cookiejar );
 			}
 
 			if( obj.end )
