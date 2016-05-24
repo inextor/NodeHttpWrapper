@@ -121,12 +121,20 @@ function httpRequest( obj )
 			HttpsProxyAgent = require('http-proxy-agent');
 
 		var proxyPort	= obj.proxyPort || 80;
+		var proxyUrl	= '';
 
 		if( urlObj.protocol === 'http:' )
-			agent =  new HttpProxyAgent( 'http://'+obj.proxy+':'+proxyPort );
+		{
+			proxyString	= 'http://'+obj.proxy+':'+proxyPort;
+			agent 		= new HttpProxyAgent(  );
+		}
 		else
-			agent = new HttpsProxyAgent( 'https://'+obj.proxy+':'+proxyPort );
+		{
+			proxyString	= 'https://'+obj.proxy+':'+proxyPort;
+			agent		= new HttpsProxyAgent( proxyString );
+		}
 
+		if( obj.debug ) console.log( colors.yellow.bold('Using Proxy:'), proxyString );
 	}
 
 	var options		=
@@ -231,7 +239,6 @@ function httpRequest( obj )
 			newRequestObject.maxRedirects	= obj.maxRedirects - 1;
 			newRequestObject.url			= res.headers.location;
 			newRequestObject.cookiejar		= cookiejar;
-			newRequestObject.referer		= obj.url;
 
 			for(var l in obj.headers )
 			{
@@ -241,6 +248,7 @@ function httpRequest( obj )
 					newRequestObject.headers[ l ] =  obj.headers;
 				}
 			}
+			newRequestObject.referer		= obj.url;
 
 			httpRequest( newRequestObject );
 			return;
