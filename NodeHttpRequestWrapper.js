@@ -84,10 +84,10 @@ function httpRequest( obj )
 		headers.Cookie	= cookieString;
 	}
 
-	if( obj.post )
+	if( obj.post  || obj.data )
 	{
 		method						= 'POST';
-	   	postData					= querystring.stringify( obj.post );
+	   	postData					= querystring.stringify( obj.post || obj.data );
 		headers['Content-Type']		= 'application/x-www-form-urlencoded';
 		headers['Content-Length']	= postData.length;
 	}
