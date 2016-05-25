@@ -28,10 +28,13 @@
 		}
 	});
 */
+ //var HttpsProxyAgent = require('https-proxy-agent');
+ //var HttpProxyAgent = require('http-proxy-agent');
 
 var Iconv			= require('iconv').Iconv;
 var tough			= require('tough-cookie');
 var Cookie			= tough.Cookie;
+var zlib			= require('zlib');
 
 function httpRequest( obj )
 {
@@ -116,9 +119,9 @@ function httpRequest( obj )
 		var HttpsProxyAgent		= null;
 
 		if( urlObj.protocol == 'http:' )
-			HttpProxyAgent	= require('https-proxy-agent');
+			HttpProxyAgent	= require('http-proxy-agent');
 		else
-			HttpsProxyAgent = require('http-proxy-agent');
+			HttpsProxyAgent = require('https-proxy-agent');
 
 		var proxyPort	= obj.proxyPort || 80;
 		var proxyUrl	= '';
@@ -126,7 +129,7 @@ function httpRequest( obj )
 		if( urlObj.protocol === 'http:' )
 		{
 			proxyString	= 'http://'+obj.proxy+':'+proxyPort;
-			agent 		= new HttpProxyAgent(  );
+			agent 		= new HttpProxyAgent( proxyString );
 		}
 		else
 		{
@@ -145,7 +148,7 @@ function httpRequest( obj )
 		,method			: method
 		,headers		: headers
 		,protocol		: urlObj.protocol
-		,agent			: obj.agent
+		,agent			: agent
 	};
 
 	if( obj.debug )
@@ -153,7 +156,7 @@ function httpRequest( obj )
 		console.log
 		(
 			colors.blue(  method )
-			,' ',colors.red.bold( urlObj.protocol )+colors.green( urlObj.hostname )+colors.blue( urlObj.path)
+			,' ',colors.red.bold( urlObj.protocol+'//' )+colors.green( urlObj.hostname )+colors.blue( urlObj.path)
 		);
 	}
 
@@ -164,8 +167,7 @@ function httpRequest( obj )
 
 		//for(var i=0;i<res.headers.length;i++)
 
-		if( obj.debug )
-			console.log(colors.magenta.bold('Response Headers'));
+		if( obj.debug ) console.log(colors.magenta.bold('Response Headers'));
 
 		for(var i in res.headers )
 		{
@@ -178,7 +180,7 @@ function httpRequest( obj )
 				);
 			}
 
-			if( i == 'content-type' )
+			if( i === 'content-type' )
 			{
 				if(  res.headers[i].match( /charset=/ ) )
 				{
@@ -191,7 +193,7 @@ function httpRequest( obj )
 				}
 
 			}
-			else if( i=='set-cookie')
+			else if( i=== 'set-cookie')
 			{
 
 				if (res.headers['set-cookie'] instanceof Array)
@@ -203,6 +205,10 @@ function httpRequest( obj )
 				{
 					cookiejar.setCookieSync( cookies[j], obj.url ,{loose: true} );
 				}
+			}
+			else if( i === 'content-encoding' )
+			{
+
 			}
 		}
 
@@ -237,6 +243,10 @@ function httpRequest( obj )
 			}
 
 			newRequestObject.maxRedirects	= obj.maxRedirects - 1;
+			if( res.headers.location.indexOf('//' ) === 0 )
+			{
+				res.headers.location = urlObj.protocol+res.headers.location;
+			}
 			newRequestObject.url			= res.headers.location;
 			newRequestObject.cookiejar		= cookiejar;
 
@@ -282,7 +292,7 @@ function httpRequest( obj )
 
 			if( obj.success )
 			{
-				var results = new Buffer(totallength);
+				var results = new Buffer( totallength );
 				var pos		= 0;
 
 				for (var i = 0; i < chunks.length; i++)
@@ -293,25 +303,53 @@ function httpRequest( obj )
 
 				var data	= null;
 
-				if( charset.toLowerCase() == 'utf-8' || charset.toLowerCase() == 'utf8' )
+				var decodingCb	= function( buffer )
 				{
-					data  = results.toString('utf8');
-				}
-				else
-				{
-					var iconv		= new Iconv( charset , 'UTF8');
-					var converted	= iconv.convert(results);
-					data		= converted.toString('utf8');
-				}
+					if( charset.toLowerCase() == 'utf-8' || charset.toLowerCase() == 'utf8' )
+					{
+						data			= buffer.toString('utf8');
+					}
+					else
+					{
+						var iconv		= new Iconv( charset , 'UTF8');
+						var converted	= iconv.convert( buffer );
+						data			= converted.toString('utf8');
+					}
 
-				if( obj.dataType != 'json' )
-					obj.success( data, headers, cookiejar );
+					if( obj.dataType !== 'json' )
+					{
+						obj.success( data, headers, cookiejar );
+					}
+					else
+					{
+						obj.success( JSON.parse( data ), headers, cookiejar );
+					}
+
+					if( obj.end )
+						obj.end();
+				};
+
+				if( res.headers['content-encoding'] === 'gzip' || res.headers['content-encoding'] === 'deflate' )
+				{
+					if( obj.debug ) console.log( colors.red.bold('Using glib'));
+
+					zlib.unzip( results, function( err, buffer )
+					{
+						if( err )
+						{
+							obj.error( error );
+							obj.end();
+							return;
+						}
+						decodingCb( buffer );
+					});
+				}
 				else
-					obj.success( JSON.parse( data ), headers, cookiejar );
+				{
+					if( obj.debug ) console.log( colors.red.bold('Using glib'));
+					decodingCb( results );
+				}
 			}
-
-			if( obj.end )
-				obj.end();
 		});
 	});
 
