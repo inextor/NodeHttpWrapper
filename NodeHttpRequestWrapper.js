@@ -54,7 +54,7 @@ function httpRequest( obj )
 	var method			= 'GET';
 	var postData		= '';
 	var headers	 		= {};
-	var charset			= 'utf-8';
+	var charset			= null;
 
 	if( obj.debug )
 	{
