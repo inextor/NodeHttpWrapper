@@ -34,7 +34,7 @@ httpRequest
 ##All Options
 
 **debug**      	: true
-**url**        	: "http://craigslist.com"<br>
+**url**        	: "http://google.com"<br>
 **agent**      	: new HttpProxyAgent( 'http://'+ip.ipAddress+':'+ip.port ) // OR<br>
 **proxy**		: '192.168.1.59' //Best because dectect http or https agent<br>
 **proxyPort**	: 8080<br>
