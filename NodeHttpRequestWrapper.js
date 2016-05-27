@@ -305,24 +305,27 @@ function httpRequest( obj )
 
 				var decodingCb	= function( buffer )
 				{
-					if( charset.toLowerCase() == 'utf-8' || charset.toLowerCase() == 'utf8' )
+					if(charset || obj.dataType == 'json' || res.headers['content-type'].indexOf('text') >= 0 )
 					{
-						data			= buffer.toString('utf8');
-					}
-					else
-					{
-						var iconv		= new Iconv( charset , 'UTF8');
-						var converted	= iconv.convert( buffer );
-						data			= converted.toString('utf8');
-					}
+						if(  ['utf-8','utf8'].indexOf( charset.toLowerCase() ) != -1 )
+						{
+							data			= buffer.toString('utf8');
+						}
+						else
+						{
+							var iconv		= new Iconv( charset , 'UTF8');
+							var converted	= iconv.convert( buffer );
+							data			= converted.toString('utf8');
+						}
 
-					if( obj.dataType !== 'json' )
-					{
-						obj.success( data, headers, cookiejar );
+						if( obj.dataType === 'json' )
+							obj.success( JSON.parse( data ), headers, cookiejar );
+						else
+							obj.success( data , headers, cookiejar );
 					}
 					else
 					{
-						obj.success( JSON.parse( data ), headers, cookiejar );
+						obj.success( buffer, headers, cookiejar );
 					}
 
 					if( obj.end )
@@ -331,7 +334,7 @@ function httpRequest( obj )
 
 				if( res.headers['content-encoding'] === 'gzip' || res.headers['content-encoding'] === 'deflate' )
 				{
-					if( obj.debug ) console.log( colors.red.bold('Using glib'));
+					if( obj.debug ) console.log( colors.red.bold('Using zlib'));
 
 					zlib.unzip( results, function( err, buffer )
 					{
@@ -346,7 +349,6 @@ function httpRequest( obj )
 				}
 				else
 				{
-					if( obj.debug ) console.log( colors.red.bold('Using glib'));
 					decodingCb( results );
 				}
 			}
@@ -371,7 +373,7 @@ function httpRequest( obj )
 		if( obj.error ) obj.error(e);
 	});
 
-	if( obj.debug ) console.log(colors.blue('post dat length is:'), colors.red( postData.length ) );
+	if( obj.debug ) console.log(colors.blue('post data length is:'), colors.red( postData.length ) );
 
 	// write data to request body
 	if( method == 'POST' )
