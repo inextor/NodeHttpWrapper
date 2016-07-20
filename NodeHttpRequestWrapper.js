@@ -1,5 +1,5 @@
 /*
-	var httpRequestWrapper = require('nodeHttpRequestWrapper');
+		var httpRequestWrapper = require('nodeHttpRequestWrapper');
 
 	httpRequestWrapper
 	({
@@ -49,6 +49,7 @@ function httpRequest( obj )
 	const querystring	= require('querystring');
 
 	var urlObj			= url.parse( obj.url );
+
 
 	var http			=  urlObj.protocol === 'http:' ? require('http') : require('https');
 	var method			= 'GET';
@@ -104,7 +105,11 @@ function httpRequest( obj )
 
 	if( ! port )
 	{
+
    		port	= urlObj.protocol === 'https:' ? 443 : 80;
+
+		if( obj.debug )
+			console.log('Overriding Port because protocol'+colors.yellow.bold( port ));
 	}
 
 	if( obj.debug )
@@ -305,9 +310,26 @@ function httpRequest( obj )
 
 				var decodingCb	= function( buffer )
 				{
-					if(charset || obj.dataType == 'json' || res.headers['content-type'].indexOf('text') >= 0 )
+					if(!charset )
 					{
-						if(  ['utf-8','utf8'].indexOf( charset.toLowerCase() ) != -1 )
+						if( obj.dataType == 'json' ||
+							[
+								'text/json'
+								,'application/json'
+								,'application/x-javascript'
+								,'text/javascript'
+								,'text/x-javascript'
+								,'text/x-json'
+							].indexOf( res.headers['content-type'] ) !== -1
+						  )
+						{
+							charset = 'utf-8';
+						}
+					}
+
+					if( charset || res.headers['content-type'].indexOf('text') >= 0 )
+					{
+						if( obj.dataType == 'json' || ( charset && ['utf-8','utf8'].indexOf( charset.toLowerCase() ) != -1 ) )
 						{
 							data			= buffer.toString('utf8');
 						}
@@ -319,9 +341,25 @@ function httpRequest( obj )
 						}
 
 						if( obj.dataType === 'json' )
+						{
+							try
+							{
+								var objCb = JSON.parse( data );
+							}
+							catch(e)
+							{
+								if( typeof obj.error === "function")
+								{
+									obj.error( e );
+								}
+							}
+
 							obj.success( JSON.parse( data ), headers, cookiejar );
+						}
 						else
+						{
 							obj.success( data , headers, cookiejar );
+						}
 					}
 					else
 					{
