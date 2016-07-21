@@ -342,9 +342,10 @@ function httpRequest( obj )
 
 						if( obj.dataType === 'json' )
 						{
+							var objCb = null;
 							try
 							{
-								var objCb = JSON.parse( data );
+								objCb = JSON.parse( data );
 							}
 							catch(e)
 							{
@@ -352,9 +353,10 @@ function httpRequest( obj )
 								{
 									obj.error( e );
 								}
+								return;
 							}
 
-							obj.success( JSON.parse( data ), headers, cookiejar );
+							obj.success( objCb, headers, cookiejar );
 						}
 						else
 						{
