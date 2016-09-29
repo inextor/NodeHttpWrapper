@@ -10,6 +10,7 @@
 		,proxy			: 'http://myproxy.com'
 		,proxyPort		: 8080
 		,maxRedirects	: 10
+		,timeout		: 3000
 		,success		: function( data,headers,cookiejar ) //set if you spect string data
 		{
 
@@ -89,9 +90,12 @@ function httpRequest( obj )
 	{
 		method						= 'POST';
 	   	postData					= querystring.stringify( obj.post || obj.data );
+		console.log( postData );
+		console.log( colors.magenta( 'post_data') , postData );
 		headers['Content-Type']		= 'application/x-www-form-urlencoded';
 		headers['Content-Length']	= postData.length;
 	}
+
 
 	if( obj.debug )
 	{
@@ -329,11 +333,11 @@ function httpRequest( obj )
 
 					if( charset || res.headers['content-type'].indexOf('text') >= 0 )
 					{
-						if( obj.dataType == 'json' || ( charset && ['utf-8','utf8'].indexOf( charset.toLowerCase() ) != -1 ) )
+						if( !charset || obj.dataType == 'json' || ( charset && ['utf-8','utf8'].indexOf( charset.toLowerCase() ) != -1 ) )
 						{
 							data			= buffer.toString('utf8');
 						}
-						else
+						else if( charset )
 						{
 							var iconv		= new Iconv( charset , 'UTF8');
 							var converted	= iconv.convert( buffer );
@@ -356,16 +360,16 @@ function httpRequest( obj )
 								return;
 							}
 
-							obj.success( objCb, headers, cookiejar );
+							obj.success( objCb, res.headers, cookiejar );
 						}
 						else
 						{
-							obj.success( data , headers, cookiejar );
+							obj.success( data , res.headers, cookiejar );
 						}
 					}
 					else
 					{
-						obj.success( buffer, headers, cookiejar );
+						obj.success( buffer, res.headers, cookiejar );
 					}
 
 					if( obj.end )
