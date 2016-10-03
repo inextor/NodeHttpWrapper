@@ -90,8 +90,10 @@ function httpRequest( obj )
 	{
 		method						= 'POST';
 	   	postData					= querystring.stringify( obj.post || obj.data );
-		console.log( postData );
-		console.log( colors.magenta( 'post_data') , postData );
+
+		if( obj.debug )
+			console.log( colors.magenta( 'post_data') , postData );
+
 		headers['Content-Type']		= 'application/x-www-form-urlencoded';
 		headers['Content-Length']	= postData.length;
 	}
@@ -212,7 +214,13 @@ function httpRequest( obj )
 
 				for(var j=0;j<cookies.length;j++)
 				{
-					cookiejar.setCookieSync( cookies[j], obj.url ,{loose: true} );
+					try
+					{
+						cookiejar.setCookieSync( cookies[j], obj.url ,{loose: true} );
+					}catch( e)
+					{
+						console.log( e );
+					}
 				}
 			}
 			else if( i === 'content-encoding' )
@@ -331,7 +339,7 @@ function httpRequest( obj )
 						}
 					}
 
-					if( charset || res.headers['content-type'].indexOf('text') >= 0 )
+					if( charset || (typeof res.headers['content-type'] === "string" && res.headers['content-type'].indexOf('text') >= 0 ) )
 					{
 						if( !charset || obj.dataType == 'json' || ( charset && ['utf-8','utf8'].indexOf( charset.toLowerCase() ) != -1 ) )
 						{
