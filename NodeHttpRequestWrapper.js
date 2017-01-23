@@ -32,7 +32,6 @@
  //var HttpsProxyAgent = require('https-proxy-agent');
  //var HttpProxyAgent = require('http-proxy-agent');
 
-var Iconv			= require('iconv').Iconv;
 var tough			= require('tough-cookie');
 var Cookie			= tough.Cookie;
 var zlib			= require('zlib');
@@ -169,6 +168,11 @@ function httpRequest( obj )
 			colors.blue(  method )
 			,' ',colors.red.bold( urlObj.protocol+'//' )+colors.green( urlObj.hostname )+colors.blue( urlObj.path)
 		);
+	}
+
+	if( typeof obj.auth !== "undefined" && obj.auth.trim() !== '')
+	{
+		options.auth = obj.auth;
 	}
 
 
@@ -347,7 +351,10 @@ function httpRequest( obj )
 						}
 						else if( charset )
 						{
+
+							var Iconv		= require('iconv').Iconv;
 							var iconv		= new Iconv( charset , 'UTF8');
+
 							var converted	= iconv.convert( buffer );
 							data			= converted.toString('utf8');
 						}
