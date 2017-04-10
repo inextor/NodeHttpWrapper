@@ -32,6 +32,7 @@
  //var HttpsProxyAgent = require('https-proxy-agent');
  //var HttpProxyAgent = require('http-proxy-agent');
 
+const qs				= require('qs');
 var tough			= require('tough-cookie');
 var Cookie			= tough.Cookie;
 var zlib			= require('zlib');
@@ -46,7 +47,6 @@ function httpRequest( obj )
 		colors			= require('colors/safe');
 
 	const url			= require('url');
-	const querystring	= require('querystring');
 
 	var urlObj			= url.parse( obj.url );
 
@@ -75,6 +75,11 @@ function httpRequest( obj )
 			//console.log(colors.yellow.bold('Cookies'),colors.green.bold( obj.headers[ i ] ) );
 			cookiejar.setCookieSync( obj.headers[ i ], obj.url,{loose: true});
 		}
+
+		if( i.toLowerCase() == 'Connection' )
+		{
+
+		}
 	}
 
 	var cookieString	= cookiejar.getCookieStringSync( obj.url,{} );
@@ -88,7 +93,7 @@ function httpRequest( obj )
 	if( obj.post  || obj.data )
 	{
 		method						= 'POST';
-	   	postData					= querystring.stringify( obj.post || obj.data );
+	   	postData					= qs.stringify( obj.post || obj.data );
 
 		if( obj.debug )
 			console.log( colors.magenta( 'post_data') , postData );
@@ -231,6 +236,14 @@ function httpRequest( obj )
 			{
 
 			}
+		}
+
+		if( obj.onHeaders )
+		{
+			if( obj.debug )
+				console.log('ON headers');
+
+			obj.onHeaders( res.headers );
 		}
 
 		if( res.statusCode  >= 300 && res.statusCode < 400 )
