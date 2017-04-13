@@ -228,7 +228,8 @@ function httpRequest( obj )
 						cookiejar.setCookieSync( cookies[j], obj.url ,{loose: true} );
 					}catch( e)
 					{
-						console.log( e );
+						if( this.debug )
+							console.log( e );
 					}
 				}
 			}
@@ -297,6 +298,13 @@ function httpRequest( obj )
 			httpRequest( newRequestObject );
 			return;
 		}
+		else if( res.statusCode > 400 )
+		{
+			if( obj.debug )
+				console.error('Fail code is', res.statusCode );
+		}
+
+
 
 
 		var data		=	'';
@@ -358,7 +366,7 @@ function httpRequest( obj )
 
 					if( charset || (typeof res.headers['content-type'] === "string" && res.headers['content-type'].indexOf('text') >= 0 ) )
 					{
-						if( !charset || obj.dataType == 'json' || ( charset && ['utf-8','utf8'].indexOf( charset.toLowerCase() ) != -1 ) )
+						if( !charset || obj.dataType == 'json' || ( charset && ( charset.toLowerCase().indexOf('utf-8') !== -1 ||  charset.toLowerCase().indexOf('utf8') !== -1 )  ) )
 						{
 							data			= buffer.toString('utf8');
 						}
@@ -366,10 +374,10 @@ function httpRequest( obj )
 						{
 
 							var Iconv		= require('iconv').Iconv;
-							var iconv		= new Iconv( charset , 'UTF8');
+							var iconv		= new Iconv( charset , 'utf-8');
 
 							var converted	= iconv.convert( buffer );
-							data			= converted.toString('utf8');
+							data			= converted.toString('utf-8');
 						}
 
 						if( obj.dataType === 'json' )
@@ -383,7 +391,11 @@ function httpRequest( obj )
 							{
 								if( typeof obj.error === "function")
 								{
+									if( obj.debug )
+										console.log('Fails on json parse assing objCb');
+
 									obj.error( e );
+
 								}
 								return;
 							}
@@ -412,7 +424,10 @@ function httpRequest( obj )
 					{
 						if( err )
 						{
-							obj.error( error );
+							if( obj.debug )
+								console.log('Fails here');
+
+							obj.error( err );
 							obj.end();
 							return;
 						}
@@ -434,6 +449,9 @@ function httpRequest( obj )
 			socket.setTimeout( obj.timeout );
 			socket.on('timeout', function()
 			{
+				if( obj.debug )
+					console.log('Timeout');
+
 				req.abort();
 			});
 		});
